@@ -4,13 +4,11 @@ from Bio.Blast import NCBIXML
 
 def extract_substitutions(query, subject, match):
     substitutions = []
-    query_pos = 1  # Позиция в запросе
+    query_pos = 1 
     for q_char, s_char, m_char in zip(query, subject, match):
-        # Пропуск невыравненных позиций
         if q_char == '-' or s_char == '-':
             continue
         
-        # Если аминокислоты отличаются, добавляем замену
         if q_char != s_char:
             substitutions.append(f"{q_char}{query_pos}{s_char}")
 
@@ -18,7 +16,6 @@ def extract_substitutions(query, subject, match):
 
     return substitutions
 
-# Данные для запроса
 dna_sequence = 'CCTCGCCATGGCGACCGCGACGGCTGCCGCGCGGAGCCGGCAGATCCACCTGCGCTTCTACATGCACGACATCACCGGCGGCCCGGGACAGACGGCGGTGCAGCTCGTGAAGGGGCCCGGCCCCGCGCACCCGTTCATGCCGGGCGCCCACTTCGGCGACACGACGGTGATCGACGACGCGCTGACGGAAGGCCCCAGCGCGGCATCGCGGGCCGCCGGTCGCGCGCAGGGGTCGTACATGCTGGCGGGACTCAAGGAGCCCGTGCTGATGGTGTCCATGACCGTGGCGCTCACGGGCGGTCCATACAACGGCAGCACCATCGCCGTGGTGGGCCGGGACGACATCTCCGCGGCGGTCAGGGAGCTCGCGGTCGCCGGCGGCACGGGCGCGTTCCGGAAGGCGACGGGGCACGTCCTGTGGCGGACGGCCAGGATGGAGTCGCGCGACCACATGGTGCTCCAGCTGGACGTCTACGCGACCGTGCCGGCCGCTGTTGCTGCTCCGGGCGACGGGCAGCGTGAGGCCGGCGTTTTGAATATTTAG'  # Замените 'sequence' на реальную последовательность ДНК
 url = 'https://web.expasy.org/cgi-bin/translate/dna2aa.cgi'
 data = {
@@ -26,45 +23,35 @@ data = {
     'output_format': 'fasta'
 }
 
-# Отправка POST-запроса
 response = requests.post(url, data=data)
 
-# Вывод содержимого ответа
 print(response.text)
 
-# Получение всех аминокислотных последовательностей из ответа
-# Ответ в формате FASTA, последовательности начинаются после первой строки и разделяются пустыми строками
-amino_acid_blocks = response.text.split('\n>')[1:]  # Берем все блоки после первой строки с '>'
+amino_acid_blocks = response.text.split('\n>')[1:]  
 amino_acid_sequences = []
 for block in amino_acid_blocks:
     lines = block.split('\n')
     header = lines[0]
-    sequence = ''.join(line.strip() for line in lines[1:] if line)  # Убираем переносы строк и объединяем
+    sequence = ''.join(line.strip() for line in lines[1:] if line) 
     amino_acid_sequences.append((header, sequence))
 
-# Проверка, что получили последовательности
 if amino_acid_sequences:
-    # Показ полученных последовательностей в формате FASTA
     print("**** Amino Acid Sequences in FASTA format ****")
     for header, sequence in amino_acid_sequences:
         print(f">{header}")
         print(sequence)
 
-    # Выполнение BLAST-запроса для каждой полученной аминокислотной последовательности
     for header, amino_acid_sequence in amino_acid_sequences:
         print(f"Processing BLAST for: {header}")
         result_handle = NCBIWWW.qblast("blastp", "nr", amino_acid_sequence)
 
-        # Чтение результата в формате XML
         blast_records = NCBIXML.parse(result_handle)
-        blast_record = next(blast_records)  # Получаем первую запись из парсера
+        blast_record = next(blast_records)  
 
-        # Вывод первого совпадения с наибольшим сходством в формате FASTA
         if blast_record.alignments:
             first_alignment = blast_record.alignments[0]
             first_hsp = first_alignment.hsps[0]
 
-            # Форматирование в стиле FASTA
             fasta_header = f">{first_alignment.title}"
             fasta_sequence = first_hsp.sbjct
 
@@ -72,7 +59,6 @@ if amino_acid_sequences:
             print(fasta_header)
             print(fasta_sequence)
             
-            # Вывод выравнивания
             print("**** Alignment ****")
             print(f"Sequence: {first_alignment.title}")
             print(f"Length: {first_alignment.length}")
@@ -84,7 +70,6 @@ if amino_acid_sequences:
             print("Subject:")
             print(first_hsp.sbjct)
             
-            # Анализ выравнивания и вывод замен
             query = first_hsp.query
             match = first_hsp.match
             subject = first_hsp.sbjct
@@ -97,4 +82,4 @@ if amino_acid_sequences:
         else:
             print("No alignments found for sequence:", header)
 else:
-    print("Не удалось получить аминокислотные последовательности.")
+    print("No amino acid changes received.")
